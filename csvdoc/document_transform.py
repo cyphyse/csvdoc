@@ -47,22 +47,29 @@ class DocumentTransform(object):
             1.) --- txt1 --- ... --- txtn+1     => yaml=txt1+txtn, md=txtn+1
             2.) --- txt1 --- txt2               => yaml=txt1, md=txt2
             3.) txt1 --- txt2                   => yaml=txt1, md=txt2
-            4.) --- txt                         => yaml='', md=txt
-            5.) txt                             => yaml=txt, md=''
+            4.) txt ---                         => yaml=txt, md=''
+            5.) --- txt                         => yaml='', md=txt
+            6.) txt                             => yaml=txt, md=''
         """
         yaml_data, md_text = "", ""
         # add chars to ensure common separator search pattern
         document = "\n" + document + "\n"
+        # replace doubled seperator
+        while SEP + SEPS in document:
+            document = document.replace(SEP + SEPS, SEP)
         sections = document.split(SEP)
-        if len(sections) == 0:          # 5.)
+        if len(sections) == 0:          # 6.)
             yaml_data = document.strip()
             md_text = ""
-        else:                           # 1.) to 4.)
+        else:                           # 1.) to 5.)
             md_text = sections.pop(-1).strip()
             yaml_data = "\n".join(sections).strip()
         return [yaml_data, md_text]
 
     def get_sep_cleaned_doc(self, document):
+        """
+        Returns a document with separators in the right places.
+        """
         [yaml_data, md_text] = self.split_document(document)
         if len(yaml_data) > 0:
             doc = SEPS + yaml_data + SEP + md_text

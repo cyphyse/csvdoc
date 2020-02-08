@@ -41,16 +41,19 @@ class TestDocumentValidation(unittest.TestCase):
         # --- data markdown => fail
         doc_w_first_sep = yaml_w_first_sep + md
 
+        cnt = 0
         # clean separator test (VISUAL ONLY)
         def print_sep_test(doc):
-            print("Begin of sample:")
+            nonlocal cnt
+            cnt += 1
+            print("Begin of sample [%d]:" % cnt)
             print(doc)
             print("End of sample.")
             res = transform.get_sep_cleaned_doc(doc)
-            print("Cleaned data:")
+            print("Cleaned data [%d]:" % cnt)
             print(res)
             print("End of cleaned data.")
-        print("START OF MANUAL TEST")
+        logger.warning("START OF MANUAL TEST")
         print_sep_test(doc_full_origin)
         print_sep_test(yaml_wo_sep)
         print_sep_test(yaml_w_first_sep)
@@ -59,7 +62,8 @@ class TestDocumentValidation(unittest.TestCase):
         print_sep_test(md_w_one_sep)
         print_sep_test(doc_w_second_sep)
         print_sep_test(doc_w_first_sep)
-        print("END OF MANUAL TEST")
+        print_sep_test("---\n" + yo + "---\n" + md)
+        logger.warning("END OF MANUAL TEST")
         # full document validation
         res = transform.valid_fields(doc_full_origin, doc_w_second_sep)
         self.assertTrue(res)

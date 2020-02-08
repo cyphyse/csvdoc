@@ -1,7 +1,7 @@
 # -*- coding: <utf-8>
 # intern
 import config
-from csvdoc.document_transform import DocumentTransform
+from csvdoc.document_compare import DocumentCompare
 # testing
 import unittest
 # logging
@@ -9,7 +9,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-class TestDocumentValidation(unittest.TestCase):
+class TestDocumentCompare(unittest.TestCase):
 
     def test(self):
         def rows(data, start, end):
@@ -17,7 +17,7 @@ class TestDocumentValidation(unittest.TestCase):
         # init test
         config.cnt_step = 1
         # init SUT
-        transform = DocumentTransform()
+        compare = DocumentCompare()
         # init data
         yo = config.yaml_data
         md = config.md_text
@@ -49,7 +49,7 @@ class TestDocumentValidation(unittest.TestCase):
             print("Begin of sample [%d]:" % cnt)
             print(doc)
             print("End of sample.")
-            res = transform.get_sep_cleaned_doc(doc)
+            res = compare.get_sep_cleaned_doc(doc)
             print("Cleaned data [%d]:" % cnt)
             print(res)
             print("End of cleaned data.")
@@ -64,23 +64,27 @@ class TestDocumentValidation(unittest.TestCase):
         print_sep_test(doc_w_first_sep)
         print_sep_test("---\n" + yo + "---\n" + md)
         logger.warning("END OF MANUAL TEST")
-        # full document validation
-        res = transform.valid_fields(doc_full_origin, doc_w_second_sep)
+        t = "---\n---\n\n---\ndata:5\n---\n---\n\n---\n\n\n---"
+        e = "---\ndata:5\n---\n"
+        r = compare.get_sep_cleaned_doc(t)
+        self.assertEqual(r, e)
+        # full document compare
+        res = compare.fields(doc_full_origin, doc_w_second_sep)
         self.assertTrue(res)
-        res = transform.valid_fields(doc_full_origin, doc_w_first_sep)
+        res = compare.fields(doc_full_origin, doc_w_first_sep)
         self.assertFalse(res)
-        res = transform.valid_fields(md, md)
+        res = compare.fields(md, md)
         self.assertTrue(res)
-        # data onlyvalidation
-        res = transform.valid_fields(yo, yaml_w_second_sep)
+        # data onlycompare
+        res = compare.fields(yo, yaml_w_second_sep)
         self.assertTrue(res)
-        res = transform.valid_fields(yo, yaml_w_first_sep)
+        res = compare.fields(yo, yaml_w_first_sep)
         self.assertTrue(res)
-        res = transform.valid_fields(yo, yaml_wo_sep)
+        res = compare.fields(yo, yaml_wo_sep)
         self.assertTrue(res)
-        res = transform.valid_fields(yaml_wo_sep, yaml_w_second_sep)
+        res = compare.fields(yaml_wo_sep, yaml_w_second_sep)
         self.assertTrue(res)
-        res = transform.valid_fields(yaml_wo_sep, yaml_w_first_sep)
+        res = compare.fields(yaml_wo_sep, yaml_w_first_sep)
         self.assertTrue(res)
-        res = transform.valid_fields(yo, rows(yo, 2, -1))
+        res = compare.fields(yo, rows(yo, 2, -1))
         self.assertFalse(res)

@@ -1,6 +1,7 @@
 # -*- coding: <utf-8>
 # internal
 from . document_transform import DocumentTransform
+from . document_compare import DocumentCompare
 # external
 import pandas as pd
 # logging
@@ -18,6 +19,9 @@ class SingleDocumentRowTransform(DocumentTransform):
     collect datapoints from columns to put them into a yaml frontmatter or
     split datapoints from a yaml frontmatter into columns.
     """
+
+    def __init__(self):
+        self.compare = DocumentCompare()
 
     def col_dps_to_single_doc(self, col_dps_df, result_col):
         """

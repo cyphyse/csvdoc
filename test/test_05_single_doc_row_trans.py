@@ -46,15 +46,15 @@ class TestSingleDocumentRowTransform(unittest.TestCase):
         )
         assert (yaml_df_reverse == yaml_df).all, \
             "Reverse converted data is: \n" + str(yaml_df_reverse)
-        # test field validation
+        # test field compare
         tmp = custom_df.copy()
         tmp.loc[0, "b"] = 6
         yamlmddf_changed = transform.col_dps_to_single_doc(custom_df, "custom")
         reference = yamlmddf_changed.loc[0, "custom"]
         comparison = yaml_df_reverse.loc[0, "custom"]
-        self.assertTrue(transform.valid_fields(reference, comparison))
+        self.assertTrue(transform.compare.fields(reference, comparison))
         comparison = "---\nc: 5\nb: 6\n---\n" + config.md_text
-        self.assertFalse(transform.valid_fields(reference, comparison))
+        self.assertFalse(transform.compare.fields(reference, comparison))
         custom_df.columns = ["test." + col for col in custom_df.columns]
         for name in config.HYBRID_DATABASE_NAME:
             custom_df.to_csv(name, index=False)

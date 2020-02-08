@@ -7,6 +7,25 @@ logger = logging.getLogger(__file__)
 
 KEY_MARKDOWN = "markdown"
 
+SEPS = "---\n"
+SEP = "\n---\n"
+
+
+class ValidationResult(object):
+    """
+    Class to hold data from validation process.
+    """
+
+    def __init__(self, kwargs):
+        # flag for general validation
+        self.valid = kwargs.get("valid", False)
+        # flag for modified documents (added separetor)
+        self.mod = kwargs.get("mod", False)
+        # document which was used as reference
+        self.ref = kwargs.get("ref", "")
+        # document which was used as sample
+        self.cmp = kwargs.get("cmp", "")
+
 
 class DocumentTransform(object):
     """
@@ -20,6 +39,36 @@ class DocumentTransform(object):
     Markdown text will be stored in field 'markdown'.
     So be sure that you do not use this field in your yaml frontmatter.
     """
+
+    def split_document(self, document):
+        """
+        Returns document separated in yaml and markdown data.
+        Following rules will be applied:
+            1.) --- txt1 --- ... --- txtn+1     => yaml=txt1+txtn, md=txtn+1
+            2.) --- txt1 --- txt2               => yaml=txt1, md=txt2
+            3.) txt1 --- txt2                   => yaml=txt1, md=txt2
+            4.) --- txt                         => yaml='', md=txt
+            5.) txt                             => yaml=txt, md=''
+        """
+        yaml_data, md_text = "", ""
+        # add chars to ensure common separator search pattern
+        document = "\n" + document + "\n"
+        sections = document.split(SEP)
+        if len(sections) == 0:          # 5.)
+            yaml_data = document.strip()
+            md_text = ""
+        else:                           # 1.) to 4.)
+            md_text = sections.pop(-1).strip()
+            yaml_data = "\n".join(sections).strip()
+        return [yaml_data, md_text]
+
+    def get_sep_cleaned_doc(self, document):
+        [yaml_data, md_text] = self.split_document(document)
+        if len(yaml_data) > 0:
+            doc = SEPS + yaml_data + SEP + md_text
+        else:
+            doc = SEPS + SEPS + md_text
+        return doc
 
     def to_doc(self, dict_to_transform):
         """
@@ -40,28 +89,7 @@ class DocumentTransform(object):
         """
         Converts a markown document with yaml frontmatter into a dictionary.
         """
-        lines = doc_to_transform.splitlines()
-        yaml_data = ""
-        md_text = ""
-        read_header = True
-        for idx, line in enumerate(lines):
-            if idx == 0 and line == "---":
-                continue
-            if idx > 0 and line == "---":
-                read_header = False
-                continue
-            line_break = "\n"
-            last_line = idx == len(lines)-1
-            if last_line:
-                line_break = ""
-            if read_header:
-                yaml_data += line + line_break
-            else:
-                md_text += line + line_break
-        # did not found a separator
-        if read_header:
-            md_text = yaml_data
-            yaml_data = ""
+        [yaml_data, md_text] = self.split_document(doc_to_transform)
         doc_dict = {}
         if len(yaml_data) > 1:
             for doc_dp in yaml.load_all(yaml_data):
@@ -74,11 +102,12 @@ class DocumentTransform(object):
         doc_dict.update({KEY_MARKDOWN: md_text})
         return doc_dict
 
-
-    def valid_fields(self, ref_doc, cmp_doc):
+    def valid_fields(self, ref_doc_origin, cmp_doc_origin):
         """
-        Return true if two given documents with yaml frontmatter
-        containing the same keys.
+        Returns 'ValidationResult' if two given documents with yaml frontmatter
+        containing the same keys else 'None'.
+        This function also tries to assume the markown part as yaml data part
+        to allow a validation, even if separator is missing.
         """
         def get_keys(doc, name):
             try:
@@ -89,23 +118,35 @@ class DocumentTransform(object):
                              + str(doc))
                 return None
             return keys
-        valid = False
-        # preprocess (froce to try to compare)
-        if not "\n---" in ref_doc:
-            ref_doc += "\n---"
-        if not "\n---" in cmp_doc:
-            cmp_doc += "\n---"
-        refs = get_keys(ref_doc, "reference")
-        cmps = get_keys(cmp_doc, "comparison")
-        if refs is not None and cmps is not None:
-            valid = sorted(cmps) == sorted(refs)
+
+        def determin_valid(mod):
+            nonlocal ref_doc_origin, cmp_doc_origin, refs, cmps, valid
+            if not mod:     # causual validation
+                ref_doc, cmp_doc = ref_doc_origin, cmp_doc_origin
+            else:           # validation for missing separator
+                ref_doc, cmp_doc = ref_doc_origin + SEP, cmp_doc_origin + SEP
+            ref_doc = self.get_sep_cleaned_doc(ref_doc)
+            cmp_doc = self.get_sep_cleaned_doc(cmp_doc)
+            refs = get_keys(ref_doc, "reference")
+            cmps = get_keys(cmp_doc, "comparison")
+            if refs is not None and cmps is not None:
+                if sorted(cmps) == sorted(refs):
+                    valid = ValidationResult({
+                        "valid": True,
+                        "mod": mod,
+                        "ref": ref_doc,
+                        "cmp": cmp_doc
+                    })
+        valid = None
+        refs, cmps = [], []
+        determin_valid(mod=False)
+        if not valid:
+            determin_valid(mod=True)
         op = " == " if valid else " != "
-        if refs is None:
-            refs = []
-        if cmps is None:
-            cmps = []
-        logger.debug("Data field compare"
-                     + str(sorted(refs)) + op + str(sorted(cmps))
-                     + "\nReference:\n" + str(ref_doc)
-                     + "\nComparison:\n" + str(cmp_doc))
+        refs = [] if refs is None else refs
+        cmps = [] if cmps is None else refs
+        res_txt = str(sorted(refs)) + op + str(sorted(cmps))
+        ref_txt = "\nReference:\n" + str(ref_doc_origin)
+        cmp_txt = "\nComparison:\n" + str(ref_doc_origin)
+        logger.debug("Data field compare: " + res_txt + ref_txt + cmp_txt)
         return valid

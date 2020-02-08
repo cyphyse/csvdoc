@@ -20,31 +20,63 @@ class TestDocumentValidation(unittest.TestCase):
         transform = DocumentTransform()
         # init data
         yo = config.yaml_data
-        doc_full_origin = yo + config.md_text
-        yaml_data_wo_first_sep = rows(config.yaml_data, 1, None)
-        doc_full_wo_first_sep = yaml_data_wo_first_sep + config.md_text
-        yaml_data_wo_second_sep = rows(config.yaml_data, 0, -1)
-        doc_full_wo_second_sep = yaml_data_wo_second_sep + config.md_text
-        yaml_data_wo_sep = rows(config.yaml_data, 1, -1)
-        doc_full_origin = config.yaml_data
-        config.disp("Preparation (doc_full_origin)", doc_full_origin)
-        config.disp("Preparation (doc_full_wo_first_sep)", doc_full_wo_first_sep)
-        config.disp("Preparation (doc_full_wo_second_sep)", doc_full_wo_second_sep)
-        # full documents
-        res = transform.valid_fields(doc_full_origin, doc_full_wo_first_sep)
+        md = config.md_text
+        # --- data --- markdown
+        doc_full_origin = yo + md
+
+        # data => --- data ---
+        yaml_wo_sep = rows(yo, 1, -1)
+        # --- data => --- data ---
+        yaml_w_first_sep = rows(yo, 0, -1)
+        # data --- => --- data ---
+        yaml_w_second_sep = rows(yo, 1, None)
+
+        # markdown => --- --- markdown
+        md_wo_sep = md
+        # --- markdown => --- --- markdown
+        md_w_one_sep = rows(yo, 0, 1) + md
+
+        # data --- markdown => --- data --- markdown
+        doc_w_second_sep = yaml_w_second_sep + md
+        # --- data markdown => fail
+        doc_w_first_sep = yaml_w_first_sep + md
+
+        # clean separator test (VISUAL ONLY)
+        def print_sep_test(doc):
+            print("Begin of sample:")
+            print(doc)
+            print("End of sample.")
+            res = transform.get_sep_cleaned_doc(doc)
+            print("Cleaned data:")
+            print(res)
+            print("End of cleaned data.")
+        print("START OF MANUAL TEST")
+        print_sep_test(doc_full_origin)
+        print_sep_test(yaml_wo_sep)
+        print_sep_test(yaml_w_first_sep)
+        print_sep_test(yaml_w_second_sep)
+        print_sep_test(md_wo_sep)
+        print_sep_test(md_w_one_sep)
+        print_sep_test(doc_w_second_sep)
+        print_sep_test(doc_w_first_sep)
+        print("END OF MANUAL TEST")
+        # full document validation
+        res = transform.valid_fields(doc_full_origin, doc_w_second_sep)
         self.assertTrue(res)
-        res = transform.valid_fields(doc_full_origin, doc_full_wo_second_sep)
+        res = transform.valid_fields(doc_full_origin, doc_w_first_sep)
         self.assertFalse(res)
-        # data only
-        res = transform.valid_fields(yo, yaml_data_wo_first_sep)
+        res = transform.valid_fields(md, md)
         self.assertTrue(res)
-        res = transform.valid_fields(yo, yaml_data_wo_second_sep)
+        # data onlyvalidation
+        res = transform.valid_fields(yo, yaml_w_second_sep)
         self.assertTrue(res)
-        res = transform.valid_fields(yo, yaml_data_wo_sep)
+        res = transform.valid_fields(yo, yaml_w_first_sep)
         self.assertTrue(res)
-        res = transform.valid_fields(yaml_data_wo_sep, yaml_data_wo_first_sep)
+        res = transform.valid_fields(yo, yaml_wo_sep)
         self.assertTrue(res)
-        res = transform.valid_fields(yaml_data_wo_sep, yaml_data_wo_second_sep)
+        res = transform.valid_fields(yaml_wo_sep, yaml_w_second_sep)
+        self.assertTrue(res)
+        res = transform.valid_fields(yaml_wo_sep, yaml_w_first_sep)
         self.assertTrue(res)
         res = transform.valid_fields(yo, rows(yo, 2, -1))
         self.assertFalse(res)
